@@ -40,13 +40,32 @@ def replace_title(x):
 
 #to find out how many people with a given surname
 def replace_surname(surname):
-
 	#if it's more than 3 then gropu them into one group otherwise into a separate group;
 	#this is assuming that most likely 2 people with same surname might help each other to survive but more than that might compete each other to survive
 	if titanic_train[titanic_train.Surname.str.contains(surname)]['PassengerId'].count()>=3:
 		return 2;
 	else:
 		return 1;
+
+#this will require 2 parameters; the titanic data with a new column Title1 and title for each row
+def get_mean_age(x):
+	titanic_df, title = x
+
+	return titanic_df[ (titanic_df.Title1==title) & pd.notnull(titanic_df.Age)]["Age"].mean()
+
+def fill_missing_age(row):
+	
+	titanic_df, title = x;
+
+	return titanic_df[ (titanic_df.Title1==title) & pd.notnull(titanic_df.Age)]["Age"].mean()
+
+def get_fare_value_type(x):
+	df, y = x
+	if y>df.Fare.mean():
+		return 2;
+	else:
+		return 1;
+
 
 
 ##grouped=titanic_train.groupby(['Embarked'])
@@ -60,11 +79,17 @@ titanic_train.loc[ (pd.isnull(titanic_train["Age"])) &  (titanic_train["Sex"]=="
 mr_mean_age_train = titanic_train[ (pd.notnull(titanic_train["Age"])) &  (titanic_train["Sex"]=="male") & (titanic_train["Name"].str.contains("mr.")) ]["Age"].mean()
 titanic_train.loc[ (pd.isnull(titanic_train["Age"])) &  (titanic_train["Sex"]=="male") & (titanic_train["Name"].str.contains("mr.")), 'Age']=mr_mean_age_train
 
+
 mean_fare = titanic_train[ (pd.notnull(titanic_train["Fare"])) ]["Fare"].mean()
 titanic_train.loc[ pd.isnull(titanic_train["Fare"]), 'Fare'] = mean_fare
 
 titanic_train["Title"]=titanic_train.Name.map(get_title)
+titanic_train["Title1"]=titanic_train.Name.map(get_title) #will be used for determining missing age
 titanic_train.Title = titanic_train.apply(replace_title, axis=1)
+
+#fill missing ages based on title
+#titanic_train.loc[pd.isnull(titanic_train.Age), 'Age'] = titanic_train[pd.isnull(titanic_train.Age)].Title1.map(lambda x: get_mean_age([titanic_train,x]))
+
 
 #assuming people with same surname >=3 might impact their survival rate; 
 titanic_train.Surname = titanic_train.Name.map(get_surname)
@@ -77,13 +102,25 @@ titanic_train.loc[pd.isnull(titanic_train["Embarked"]),"Embarked"]='S'
 train_sex = label_encoder.fit_transform(titanic_train["Sex"])
 train_embarked = label_encoder.fit_transform(titanic_train["Embarked"])
 train_title = label_encoder.fit_transform(titanic_train["Title"])
-titanic_train.loc[titanic_train["Age"].isnull(),"Age"]= titanic_train["Age"].mean()
+
+#if there are any missing age still then this will set to mean of the complete dataset
+titanic_train.loc[titanic_train["Age"].isnull(),"Age"]= titanic_train["Age"].mean() 
+
+
+train_age_fare = titanic_train.Age * titanic_train.Fare   ##didn't work; reduced the score
+train_class_fare = titanic_train.Pclass.apply(np.square) * titanic_train.Fare
+train_class_age = titanic_train.Pclass.apply(np.square) * titanic_train.Age ##didn't work; reduced the score
+train_family = (titanic_train.Parch + titanic_train.SibSp + 1)
+train_fare_person = titanic_train.Fare/train_family
+train_family=train_family.apply(np.sqrt);
+train_fare_value_type = titanic_train.Fare.apply(lambda x: get_fare_value_type([titanic_train, x]))
+
 
 
 
 ###test data
-kids_mean_age_test = titanic_train[pd.notnull(titanic_train["Age"]) & titanic_train["Name"].str.contains("Master")]["Age"].mean();
-titanic_test.loc[pd.isnull(titanic_train["Age"]) & titanic_train["Name"].str.contains("Master"), 'Age']=kids_mean_age_train
+kids_mean_age_test = titanic_test[pd.notnull(titanic_test["Age"]) & titanic_test["Name"].str.contains("Master")]["Age"].mean();
+titanic_test.loc[pd.isnull(titanic_test["Age"]) & titanic_test["Name"].str.contains("Master"), 'Age']=kids_mean_age_test
 
 miss_mean_age_test = titanic_test[ (pd.notnull(titanic_test["Age"])) &  (titanic_test["Sex"]=="female") & (titanic_test["Name"].str.contains("Miss.")) ]["Age"].mean();
 titanic_test.loc[ (pd.isnull(titanic_test["Age"])) &  (titanic_test["Sex"]=="female") & (titanic_test["Name"].str.contains("Miss")), 'Age']=miss_mean_age_test
@@ -96,7 +133,13 @@ mean_fare = titanic_test[ (pd.notnull(titanic_test["Fare"])) ]["Fare"].mean()
 titanic_test.loc[ pd.isnull(titanic_test["Fare"]), 'Fare'] = mean_fare
 
 titanic_test["Title"]=titanic_test.Name.map(get_title)
+titanic_test["Title1"]=titanic_test.Name.map(get_title)
+
 titanic_test.Title = titanic_test.apply(replace_title, axis=1)
+
+#fill missing ages based on title
+#titanic_test.loc[pd.isnull(titanic_test.Age), 'Age'] = titanic_test[pd.isnull(titanic_test.Age)].Title1.map(lambda x: get_mean_age([titanic_test,x]))
+
 
 titanic_test.Surname = titanic_test.Name.map(get_surname)
 test_surname= titanic_test.Surname.map(replace_surname)
@@ -108,6 +151,15 @@ test_embarked = label_encoder.fit_transform(titanic_test["Embarked"])
 test_title = label_encoder.fit_transform(titanic_test["Title"])
 titanic_test.loc[titanic_test["Age"].isnull(),"Age"]= titanic_test["Age"].mean()
 
+test_age_fare = titanic_test.Age * titanic_test.Fare
+test_class_fare = titanic_test.Pclass.apply(np.square) * titanic_test.Fare
+test_class_age = titanic_test.Pclass.apply(np.square) * titanic_test.Age
+test_family = (titanic_test.Parch + titanic_test.SibSp + 1)
+test_fare_person = titanic_test.Fare/test_family
+
+test_family = test_family.apply(np.sqrt);
+
+test_fare_value_type = titanic_test.Fare.apply(lambda x: get_fare_value_type([titanic_test, x])) ##din't improve score
 
 
 train_features=pd.DataFrame([train_sex
@@ -119,6 +171,10 @@ train_features=pd.DataFrame([train_sex
 							, train_title
 							, titanic_train["Fare"]
 							,train_surname
+							#,train_fare_value_type
+							#,train_class_fare  
+							# ,train_family,
+							# ,train_fare_person
 							]).T
 test_features=pd.DataFrame([test_sex
 							, test_embarked
@@ -129,6 +185,10 @@ test_features=pd.DataFrame([test_sex
 							, test_title
 							, titanic_test["Fare"]
 							, test_surname
+							#,test_fare_value_type
+							#,test_class_fare
+							# ,test_family
+							# ,test_fare_person
 							]).T
 
 log_model = lm.LogisticRegression();
