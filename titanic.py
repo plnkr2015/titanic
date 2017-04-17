@@ -9,6 +9,10 @@ titanic_test=pd.read_csv("test.csv")
 titanic_train=pd.read_csv("train.csv")
 
 
+#get cabin_count
+def get_cabin_count(cabin):
+	return len(str(cabin).split(" "))
+
 #get title
 def get_title(name):
 	if '.' in name:
@@ -70,14 +74,14 @@ def get_fare_value_type(x):
 
 ##grouped=titanic_train.groupby(['Embarked'])
 #train data
-kids_mean_age_train = titanic_train[pd.notnull(titanic_train["Age"]) & titanic_train["Name"].str.contains("Master")]["Age"].mean();
-titanic_train.loc[pd.isnull(titanic_train["Age"]) & titanic_train["Name"].str.contains("Master"), 'Age']=kids_mean_age_train
+# kids_mean_age_train = titanic_train[pd.notnull(titanic_train["Age"]) & titanic_train["Name"].str.contains("Master")]["Age"].mean();
+# titanic_train.loc[(pd.isnull(titanic_train["Age"]) & titanic_train["Name"].str.contains("Master")), 'Age']=kids_mean_age_train
 
-miss_mean_age_train = titanic_train[ (pd.notnull(titanic_train["Age"])) &  (titanic_train["Sex"]=="female") & (titanic_train["Name"].str.contains("Miss.")) ]["Age"].mean();
-titanic_train.loc[ (pd.isnull(titanic_train["Age"])) &  (titanic_train["Sex"]=="female") & (titanic_train["Name"].str.contains("Miss")), 'Age']=miss_mean_age_train
+# miss_mean_age_train = titanic_train[ (pd.notnull(titanic_train["Age"])) &  (titanic_train["Sex"]=="female") & (titanic_train["Name"].str.contains("Miss.")) ]["Age"].mean();
+# titanic_train.loc[ (pd.isnull(titanic_train["Age"])) &  (titanic_train["Sex"]=="female") & (titanic_train["Name"].str.contains("Miss")), 'Age']=miss_mean_age_train
 
-mr_mean_age_train = titanic_train[ (pd.notnull(titanic_train["Age"])) &  (titanic_train["Sex"]=="male") & (titanic_train["Name"].str.contains("mr.")) ]["Age"].mean()
-titanic_train.loc[ (pd.isnull(titanic_train["Age"])) &  (titanic_train["Sex"]=="male") & (titanic_train["Name"].str.contains("mr.")), 'Age']=mr_mean_age_train
+# mr_mean_age_train = titanic_train[ (pd.notnull(titanic_train["Age"])) &  (titanic_train["Sex"]=="male") & (titanic_train["Name"].str.contains("mr.")) ]["Age"].mean()
+# titanic_train.loc[ (pd.isnull(titanic_train["Age"])) &  (titanic_train["Sex"]=="male") & (titanic_train["Name"].str.contains("mr.")), 'Age']=mr_mean_age_train
 
 
 mean_fare = titanic_train[ (pd.notnull(titanic_train["Fare"])) ]["Fare"].mean()
@@ -88,7 +92,7 @@ titanic_train["Title1"]=titanic_train.Name.map(get_title) #will be used for dete
 titanic_train.Title = titanic_train.apply(replace_title, axis=1)
 
 #fill missing ages based on title
-#titanic_train.loc[pd.isnull(titanic_train.Age), 'Age'] = titanic_train[pd.isnull(titanic_train.Age)].Title1.map(lambda x: get_mean_age([titanic_train,x]))
+titanic_train.loc[pd.isnull(titanic_train.Age), 'Age'] = titanic_train[pd.isnull(titanic_train.Age)].Title1.map(lambda x: get_mean_age([titanic_train,x]))
 
 
 #assuming people with same surname >=3 might impact their survival rate; 
@@ -106,27 +110,40 @@ train_title = label_encoder.fit_transform(titanic_train["Title"])
 #if there are any missing age still then this will set to mean of the complete dataset
 titanic_train.loc[titanic_train["Age"].isnull(),"Age"]= titanic_train["Age"].mean() 
 
+#a = pd.DataFrame(titanic_train['Age'])
+#a['Survived'] = pd.DataFrame(titanic_train['Survived'])
+ #ggplot(a, aes(x='Age',fill='factor(Survived)')) + geom_histogram()
 
 train_age_fare = titanic_train.Age * titanic_train.Fare   ##didn't work; reduced the score
-train_class_fare = titanic_train.Pclass.apply(np.square) * titanic_train.Fare
+train_class_fare = titanic_train.Fare/titanic_train.Pclass
 train_class_age = titanic_train.Pclass.apply(np.square) * titanic_train.Age ##didn't work; reduced the score
 train_family = (titanic_train.Parch + titanic_train.SibSp + 1)
 train_fare_person = titanic_train.Fare/train_family
-train_family=train_family.apply(np.sqrt);
+#train_family=train_family.apply(np.sqrt);
+
+train_family[(train_family<4)]=1
+train_family[train_family>=4]=2
+
 train_fare_value_type = titanic_train.Fare.apply(lambda x: get_fare_value_type([titanic_train, x]))
+
+###cabin
+titanic_train['Cabincount']=titanic_train.Cabin.apply(get_cabin_count)
+titanic_train.loc[ pd.isnull(titanic_train.Cabin),'Cabincount']=0
+#titanic_train.loc[ titanic_train.Cabincount>0, 'Cabincount']=1
+cabincount_train=titanic_train.Cabincount
 
 
 
 
 ###test data
-kids_mean_age_test = titanic_test[pd.notnull(titanic_test["Age"]) & titanic_test["Name"].str.contains("Master")]["Age"].mean();
-titanic_test.loc[pd.isnull(titanic_test["Age"]) & titanic_test["Name"].str.contains("Master"), 'Age']=kids_mean_age_test
+# kids_mean_age_test = titanic_test[pd.notnull(titanic_test["Age"]) & titanic_test["Name"].str.contains("Master")]["Age"].mean();
+# titanic_test.loc[pd.isnull(titanic_test["Age"]) & titanic_test["Name"].str.contains("Master"), 'Age']=kids_mean_age_test
 
-miss_mean_age_test = titanic_test[ (pd.notnull(titanic_test["Age"])) &  (titanic_test["Sex"]=="female") & (titanic_test["Name"].str.contains("Miss.")) ]["Age"].mean();
-titanic_test.loc[ (pd.isnull(titanic_test["Age"])) &  (titanic_test["Sex"]=="female") & (titanic_test["Name"].str.contains("Miss")), 'Age']=miss_mean_age_test
+# miss_mean_age_test = titanic_test[ (pd.notnull(titanic_test["Age"])) &  (titanic_test["Sex"]=="female") & (titanic_test["Name"].str.contains("Miss.")) ]["Age"].mean();
+# titanic_test.loc[ (pd.isnull(titanic_test["Age"])) &  (titanic_test["Sex"]=="female") & (titanic_test["Name"].str.contains("Miss")), 'Age']=miss_mean_age_test
 
-mr_mean_age_test = titanic_test[ (pd.notnull(titanic_test["Age"])) &  (titanic_test["Sex"]=="male") & (titanic_test["Name"].str.contains("mr.")) ]["Age"].mean()
-titanic_test.loc[ (pd.isnull(titanic_test["Age"])) &  (titanic_test["Sex"]=="male") & (titanic_test["Name"].str.contains("mr.")), 'Age']=mr_mean_age_test
+# mr_mean_age_test = titanic_test[ (pd.notnull(titanic_test["Age"])) &  (titanic_test["Sex"]=="male") & (titanic_test["Name"].str.contains("mr.")) ]["Age"].mean()
+# titanic_test.loc[ (pd.isnull(titanic_test["Age"])) &  (titanic_test["Sex"]=="male") & (titanic_test["Name"].str.contains("mr.")), 'Age']=mr_mean_age_test
 
 
 mean_fare = titanic_test[ (pd.notnull(titanic_test["Fare"])) ]["Fare"].mean()
@@ -137,8 +154,8 @@ titanic_test["Title1"]=titanic_test.Name.map(get_title)
 
 titanic_test.Title = titanic_test.apply(replace_title, axis=1)
 
-#fill missing ages based on title
-#titanic_test.loc[pd.isnull(titanic_test.Age), 'Age'] = titanic_test[pd.isnull(titanic_test.Age)].Title1.map(lambda x: get_mean_age([titanic_test,x]))
+#fill missing ages based on title; this works
+titanic_test.loc[pd.isnull(titanic_test.Age), 'Age'] = titanic_test[pd.isnull(titanic_test.Age)].Title1.map(lambda x: get_mean_age([titanic_test,x]))
 
 
 titanic_test.Surname = titanic_test.Name.map(get_surname)
@@ -152,14 +169,22 @@ test_title = label_encoder.fit_transform(titanic_test["Title"])
 titanic_test.loc[titanic_test["Age"].isnull(),"Age"]= titanic_test["Age"].mean()
 
 test_age_fare = titanic_test.Age * titanic_test.Fare
-test_class_fare = titanic_test.Pclass.apply(np.square) * titanic_test.Fare
+test_class_fare = titanic_test.Fare/titanic_test.Pclass
 test_class_age = titanic_test.Pclass.apply(np.square) * titanic_test.Age
 test_family = (titanic_test.Parch + titanic_test.SibSp + 1)
 test_fare_person = titanic_test.Fare/test_family
 
-test_family = test_family.apply(np.sqrt);
+#test_family = test_family.apply(np.sqrt);
+test_family[(test_family<4)]=1
+test_family[test_family>=4]=2
 
 test_fare_value_type = titanic_test.Fare.apply(lambda x: get_fare_value_type([titanic_test, x])) ##din't improve score
+
+###cabin
+titanic_test['Cabincount']=titanic_test.Cabin.apply(get_cabin_count)
+titanic_test.loc[ pd.isnull(titanic_test.Cabin),'Cabincount']=0
+#titanic_test.loc[ titanic_test.Cabincount>0, 'Cabincount']=1
+cabincount_test=titanic_test.Cabincount
 
 
 train_features=pd.DataFrame([train_sex
@@ -173,8 +198,9 @@ train_features=pd.DataFrame([train_sex
 							,train_surname
 							#,train_fare_value_type
 							#,train_class_fare  
-							# ,train_family,
+							 ,train_family
 							# ,train_fare_person
+							,cabincount_train
 							]).T
 test_features=pd.DataFrame([test_sex
 							, test_embarked
@@ -187,8 +213,9 @@ test_features=pd.DataFrame([test_sex
 							, test_surname
 							#,test_fare_value_type
 							#,test_class_fare
-							# ,test_family
+							 ,test_family
 							# ,test_fare_person
+							,cabincount_test
 							]).T
 
 log_model = lm.LogisticRegression();
