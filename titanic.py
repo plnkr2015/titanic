@@ -55,13 +55,12 @@ def replace_surname(surname):
 def get_mean_age(x):
 	titanic_df, title = x
 
-	return titanic_df[ (titanic_df.Title1==title) & pd.notnull(titanic_df.Age)]["Age"].mean()
+	return titanic_df[ (titanic_df.Title==title) & pd.notnull(titanic_df.Age)]["Age"].mean()
 
 def fill_missing_age(row):
 	
 	titanic_df, title = x;
-
-	return titanic_df[ (titanic_df.Title1==title) & pd.notnull(titanic_df.Age)]["Age"].mean()
+	return titanic_df[ (titanic_df.Title==title) & pd.notnull(titanic_df.Age)]["Age"].mean()
 
 def get_fare_value_type(x):
 	df, y = x
@@ -86,13 +85,15 @@ def get_fare_value_type(x):
 
 mean_fare = titanic_train[ (pd.notnull(titanic_train["Fare"])) ]["Fare"].mean()
 titanic_train.loc[ pd.isnull(titanic_train["Fare"]), 'Fare'] = mean_fare
+titanic_train.Fare = np.log1p(titanic_train.Fare)
 
 titanic_train["Title"]=titanic_train.Name.map(get_title)
-titanic_train["Title1"]=titanic_train.Name.map(get_title) #will be used for determining missing age
-titanic_train.Title = titanic_train.apply(replace_title, axis=1)
+#titanic_train["Title1"]=titanic_train.Name.map(get_title) #will be used for determining missing age
 
 #fill missing ages based on title
-titanic_train.loc[pd.isnull(titanic_train.Age), 'Age'] = titanic_train[pd.isnull(titanic_train.Age)].Title1.map(lambda x: get_mean_age([titanic_train,x]))
+titanic_train.loc[pd.isnull(titanic_train.Age), 'Age'] = titanic_train[pd.isnull(titanic_train.Age)].Title.map(lambda x: get_mean_age([titanic_train,x]))
+titanic_train.Title = titanic_train.apply(replace_title, axis=1)
+
 
 
 #assuming people with same surname >=3 might impact their survival rate; 
@@ -104,8 +105,7 @@ train_surname= titanic_train.Surname.map(replace_surname)
 titanic_train.Fare = titanic_train.Fare.astype(int)
 titanic_train.loc[pd.isnull(titanic_train["Embarked"]),"Embarked"]='S'
 train_sex = label_encoder.fit_transform(titanic_train["Sex"])
-train_embarked = label_encoder.fit_transform(titanic_train["Embarked"])
-train_title = label_encoder.fit_transform(titanic_train["Title"])
+
 
 #if there are any missing age still then this will set to mean of the complete dataset
 titanic_train.loc[titanic_train["Age"].isnull(),"Age"]= titanic_train["Age"].mean() 
@@ -148,14 +148,15 @@ cabincount_train=titanic_train.Cabincount
 
 mean_fare = titanic_test[ (pd.notnull(titanic_test["Fare"])) ]["Fare"].mean()
 titanic_test.loc[ pd.isnull(titanic_test["Fare"]), 'Fare'] = mean_fare
+titanic_test.Fare = np.log1p(titanic_test.Fare)
 
 titanic_test["Title"]=titanic_test.Name.map(get_title)
-titanic_test["Title1"]=titanic_test.Name.map(get_title)
+#titanic_test["Title1"]=titanic_test.Name.map(get_title)
 
-titanic_test.Title = titanic_test.apply(replace_title, axis=1)
 
 #fill missing ages based on title; this works
-titanic_test.loc[pd.isnull(titanic_test.Age), 'Age'] = titanic_test[pd.isnull(titanic_test.Age)].Title1.map(lambda x: get_mean_age([titanic_test,x]))
+titanic_test.loc[pd.isnull(titanic_test.Age), 'Age'] = titanic_test[pd.isnull(titanic_test.Age)].Title.map(lambda x: get_mean_age([titanic_test,x]))
+titanic_test.Title = titanic_test.apply(replace_title, axis=1)
 
 
 titanic_test.Surname = titanic_test.Name.map(get_surname)
@@ -164,8 +165,6 @@ test_surname= titanic_test.Surname.map(replace_surname)
 titanic_test.Fare = titanic_test.Fare.astype(int)
 titanic_test.loc[pd.isnull(titanic_test["Embarked"]),"Embarked"]='S'
 test_sex= label_encoder.fit_transform(titanic_test["Sex"])
-test_embarked = label_encoder.fit_transform(titanic_test["Embarked"])
-test_title = label_encoder.fit_transform(titanic_test["Title"])
 titanic_test.loc[titanic_test["Age"].isnull(),"Age"]= titanic_test["Age"].mean()
 
 test_age_fare = titanic_test.Age * titanic_test.Fare
@@ -187,43 +186,65 @@ titanic_test.loc[ pd.isnull(titanic_test.Cabin),'Cabincount']=0
 cabincount_test=titanic_test.Cabincount
 
 
+titanic_train = pd.get_dummies(titanic_train, prefix="col");
+titanic_test = pd.get_dummies(titanic_test, prefix="col");
+
 train_features=pd.DataFrame([train_sex
-							, train_embarked
 							, titanic_train["Pclass"]
 							, titanic_train["Age"]
 							, titanic_train["SibSp"]
 							, titanic_train["Parch"]
-							, train_title
 							, titanic_train["Fare"]
-							,train_surname
+							#,train_surname
 							#,train_fare_value_type
 							#,train_class_fare  
 							 ,train_family
-							# ,train_fare_person
+							 #,train_fare_person
 							,cabincount_train
+							,titanic_train.col_S  		#embarked
+							,titanic_train.col_Q		#embarked
+							,titanic_train.col_C		#embarked
+							,titanic_train.col_Master	#title
+							,titanic_train.col_Miss		#title
 							]).T
 test_features=pd.DataFrame([test_sex
-							, test_embarked
 							, titanic_test["Pclass"]
 							, titanic_test["Age"]
 							, titanic_test["SibSp"]
 							, titanic_test["Parch"]
-							, test_title
 							, titanic_test["Fare"]
-							, test_surname
+							#, test_surname
 							#,test_fare_value_type
 							#,test_class_fare
 							 ,test_family
-							# ,test_fare_person
+							 #,test_fare_person
 							,cabincount_test
+							,titanic_test.col_S
+							,titanic_test.col_Q
+							,titanic_test.col_C
+							,titanic_test.col_Master
+							,titanic_test.col_Miss
 							]).T
+
+
+poly = pp.PolynomialFeatures(2)
+train_features = poly.fit_transform(train_features)
+test_features= poly.fit_transform(test_features)
 
 log_model = lm.LogisticRegression();
 
 log_model.fit(X=train_features, y=titanic_train["Survived"])
+log_model.score(X = train_features ,
+                y = titanic_train["Survived"])
 
 test_preds=log_model.predict(X=test_features)
 
 submission = pd.DataFrame({'PassengerId':titanic_test["PassengerId"],'Survived':test_preds})
 
 submission.to_csv("test_pred10.csv", index=False)
+
+# from sklearn import datasets
+# from sklearn.naive_bayes import GaussianNB
+# titanic_dataset_tr = sklearn.datasets.base.Bunch(data=train_features, target=titanic_train.Survived)
+# gnb = GaussianNB()
+# y_pred = gnb.fit(titanic_dataset_tr.data, titanic_dataset_tr.target).predict(test_features)
