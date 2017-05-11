@@ -132,6 +132,9 @@ titanic_train.loc[ pd.isnull(titanic_train.Cabin),'Cabincount']=0
 #titanic_train.loc[ titanic_train.Cabincount>0, 'Cabincount']=1
 cabincount_train=titanic_train.Cabincount
 
+##adding new features to consider statistical interaction or synergy affect between predictors
+titanic_train['fareXpclass']= titanic_train.Pclass * titanic_train.Fare;
+
 
 
 
@@ -185,6 +188,8 @@ titanic_test.loc[ pd.isnull(titanic_test.Cabin),'Cabincount']=0
 #titanic_test.loc[ titanic_test.Cabincount>0, 'Cabincount']=1
 cabincount_test=titanic_test.Cabincount
 
+titanic_test['fareXpclass']= titanic_test.Pclass * titanic_test.Fare;
+
 
 titanic_train = pd.get_dummies(titanic_train, prefix="col");
 titanic_test = pd.get_dummies(titanic_test, prefix="col");
@@ -195,7 +200,7 @@ train_features=pd.DataFrame([train_sex
 							, titanic_train["SibSp"]
 							, titanic_train["Parch"]
 							, titanic_train["Fare"]
-							#,train_surname
+							,train_surname
 							#,train_fare_value_type
 							#,train_class_fare  
 							 ,train_family
@@ -206,6 +211,7 @@ train_features=pd.DataFrame([train_sex
 							,titanic_train.col_C		#embarked
 							,titanic_train.col_Master	#title
 							,titanic_train.col_Miss		#title
+							,titanic_train.fareXpclass
 							]).T
 test_features=pd.DataFrame([test_sex
 							, titanic_test["Pclass"]
@@ -213,7 +219,7 @@ test_features=pd.DataFrame([test_sex
 							, titanic_test["SibSp"]
 							, titanic_test["Parch"]
 							, titanic_test["Fare"]
-							#, test_surname
+							, test_surname
 							#,test_fare_value_type
 							#,test_class_fare
 							 ,test_family
@@ -224,9 +230,12 @@ test_features=pd.DataFrame([test_sex
 							,titanic_test.col_C
 							,titanic_test.col_Master
 							,titanic_test.col_Miss
+							,titanic_test.fareXpclass
+
 							]).T
 
 
+#data transfromation to higher degree polynomial
 poly = pp.PolynomialFeatures(2)
 train_features = poly.fit_transform(train_features)
 test_features= poly.fit_transform(test_features)
@@ -248,3 +257,9 @@ submission.to_csv("test_pred10.csv", index=False)
 # titanic_dataset_tr = sklearn.datasets.base.Bunch(data=train_features, target=titanic_train.Survived)
 # gnb = GaussianNB()
 # y_pred = gnb.fit(titanic_dataset_tr.data, titanic_dataset_tr.target).predict(test_features)
+
+#import statsmodels.regression.linear_model.OLS as ols
+#x=np.array(data_X_train.PoolArea)
+#ols = sm.OLS(y, x)
+#ols_result=ols.fit()
+#ols_result.summary()
